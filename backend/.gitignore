@@ -221,3 +221,6 @@ __marimo__/
 node_modules/
 dist/
 .env
+
+Untracked files:
+    dist/
