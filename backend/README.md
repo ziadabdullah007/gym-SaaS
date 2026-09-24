@@ -48,3 +48,5 @@ uvicorn app.main:app --reload
 ```
 
 The database schema is assumed to already exist. This project does not create or migrate the schema automatically.
+## Invitations & Freeze
+Run `migrations_guest_features.sql` once on the existing PostgreSQL/Supabase database before using the new guest invitation and subscription freeze features.

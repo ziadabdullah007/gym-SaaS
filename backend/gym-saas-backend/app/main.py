@@ -10,8 +10,9 @@ from app.api.v1.subscription_routes import router as subscription_router
 from app.api.v1.payment_routes import router as payment_router
 from app.api.v1.attendance_routes import router as attendance_router
 from app.api.v1.body_measurement_routes import router as measurement_router
+from app.api.v1.guest_invitation_routes import router as guest_invitation_router
 
-app = FastAPI(title="Gym SaaS API", version="2.1.0")
+app = FastAPI(title="Gym SaaS API", version="2.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,7 +25,7 @@ app.add_middleware(
 for router in [
     auth_router, saas_router, gym_router, staff_router, plan_router,
     member_router, subscription_router, payment_router, attendance_router,
-    measurement_router,
+    measurement_router, guest_invitation_router,
 ]:
     app.include_router(router)
 

@@ -14,3 +14,8 @@ class Attendance(Base):
     check_out_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     member = relationship("Member", back_populates="attendance_records")
+    guest_invitations = relationship("GuestInvitation", back_populates="attendance")
+
+    @property
+    def guest_count(self):
+        return len(self.guest_invitations or [])

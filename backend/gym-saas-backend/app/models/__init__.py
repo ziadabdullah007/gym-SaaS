@@ -9,5 +9,7 @@ from app.models.subscription import Subscription
 from app.models.payment import Payment
 from app.models.attendance import Attendance
 from app.models.body_measurement import BodyMeasurement
+from app.models.guest_invitation import GuestInvitation
+from app.models.subscription_freeze import SubscriptionFreeze
 
-__all__ = ["User", "Gym", "Staff", "SaaSPlan", "GymSubscription", "Plan", "Member", "Subscription", "Payment", "Attendance", "BodyMeasurement"]
+__all__ = ["User", "Gym", "Staff", "SaaSPlan", "GymSubscription", "Plan", "Member", "Subscription", "Payment", "Attendance", "BodyMeasurement", "GuestInvitation", "SubscriptionFreeze"]

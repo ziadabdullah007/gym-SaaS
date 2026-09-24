@@ -28,3 +28,4 @@ class Member(Base):
     subscriptions = relationship("Subscription", back_populates="member")
     attendance_records = relationship("Attendance", back_populates="member")
     body_measurements = relationship("BodyMeasurement", back_populates="member")
+    guest_invitations = relationship("GuestInvitation", back_populates="member")

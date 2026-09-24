@@ -13,6 +13,8 @@ class Plan(Base):
     description: Mapped[str | None] = mapped_column(Text)
     price: Mapped[float] = mapped_column(Numeric(10, 2))
     duration_months: Mapped[int]
+    max_invitations: Mapped[int] = mapped_column(default=0)
+    max_freeze_days: Mapped[int] = mapped_column(default=0)
     status: Mapped[str] = mapped_column(String(50))
     gym = relationship("Gym", back_populates="plans")
     subscriptions = relationship("Subscription", back_populates="plan")
