@@ -18,3 +18,15 @@ class Staff(Base):
 
     gym = relationship("Gym", back_populates="staff")
     user = relationship("User", back_populates="staff_record")
+
+    @property
+    def username(self):
+        return self.user.username if self.user else None
+
+    @property
+    def first_name(self):
+        return self.user.first_name if self.user else None
+
+    @property
+    def last_name(self):
+        return self.user.last_name if self.user else None
