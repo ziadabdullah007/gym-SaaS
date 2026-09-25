@@ -14,4 +14,5 @@ class Payment(Base):
     payment_method: Mapped[str] = mapped_column(String(50))
     status: Mapped[str] = mapped_column(String(50))
     payment_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    idempotency_key: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
     subscription = relationship("Subscription", back_populates="payments")
