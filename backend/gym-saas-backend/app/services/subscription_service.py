@@ -15,12 +15,12 @@ class SubscriptionService:
         today=date.today()
         rows=(db.query(Subscription)
             .filter(Subscription.member.has(gym_id=gym_id),
-                    Subscription.status.in_(["active", "scheduled"])).all())
+                    Subscription.status.in_(["active", "pending"])).all())
         changed=False
         for row in rows:
-            if row.end_date < today and row.status in {"active", "scheduled"}:
+            if row.end_date < today and row.status in {"active", "pending"}:
                 row.status="expired"; changed=True
-            elif row.start_date <= today <= row.end_date and row.status == "scheduled":
+            elif row.start_date <= today <= row.end_date and row.status == "pending":
                 row.status="active"; changed=True
         if changed:
             db.commit()
@@ -61,7 +61,7 @@ class SubscriptionService:
         SubscriptionService._validate_initial_payment(amount,paid,due,data["start_date"])
         today=date.today()
         if data["start_date"] > today:
-            subscription_status="scheduled"
+            subscription_status="pending"
         elif data["start_date"] <= today <= data["end_date"]:
             subscription_status="active"
         else:
@@ -86,9 +86,9 @@ class SubscriptionService:
         if current.status != "active": raise HTTPException(400,"Only an active subscription can be renewed")
         if current.remaining_amount > 0.009:
             raise HTTPException(400,"Pay the current subscription balance before renewing")
-        scheduled=db.query(Subscription).filter(Subscription.member_id==current.member_id,Subscription.status=="scheduled").first()
-        if scheduled:
-            raise HTTPException(409,"A renewal is already scheduled for this member")
+        pending=db.query(Subscription).filter(Subscription.member_id==current.member_id,Subscription.status=="pending").first()
+        if pending:
+            raise HTTPException(409,"A renewal is already pending for this member")
         plan=db.query(Plan).filter(Plan.id==data["plan_id"],Plan.gym_id==gym_id,Plan.status=="active").first()
         if not plan: raise HTTPException(400,"Plan not found")
         amount=float(plan.price); paid=float(data["initial_payment_amount"]); due=data.get("payment_due_date")
@@ -96,7 +96,7 @@ class SubscriptionService:
         # The payment agreement is made today, even though the renewed membership starts later.
         SubscriptionService._validate_initial_payment(amount,paid,due,date.today())
         new_end=renewal_start + timedelta(days=30*plan.duration_months) - timedelta(days=1)
-        new_status="active" if renewal_start <= date.today() <= new_end else "scheduled"
+        new_status="active" if renewal_start <= date.today() <= new_end else "pending"
         obj=Subscription(
             member_id=current.member_id, plan_id=plan.id, start_date=renewal_start, end_date=new_end,
             status=new_status, amount=amount, auto_renew=False,

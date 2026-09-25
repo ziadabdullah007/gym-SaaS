@@ -15,8 +15,8 @@ class PaymentService:
                 return existing
         sub=db.query(Subscription).filter(Subscription.id==data["subscription_id"],Subscription.member.has(gym_id=gym_id)).first()
         if not sub: raise HTTPException(404,"Subscription not found")
-        if sub.status not in {"active", "scheduled"}:
-            raise HTTPException(400,"Payments can only be recorded for active or scheduled subscriptions")
+        if sub.status not in {"active", "pending"}:
+            raise HTTPException(400,"Payments can only be recorded for active or pending subscriptions")
         remaining=sub.remaining_amount
         amount=float(data["amount"])
         if remaining <= 0.009:
