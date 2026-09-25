@@ -142,3 +142,16 @@ Attendance check-in uses only:
 - Frontend source includes API calls for every supported business operation.
 
 The local environment did not have a completed frontend dependency install/build available, so a production `npm run build` could not be completed here. Run `npm install && npm run build` in an environment with npm registry access before deployment.
+
+
+## Subscription & payment workflow
+
+- Creating a subscription requires at least 50% of the plan price as the initial payment.
+- The initial payment is automatically written to Payment History.
+- The subscription stores the calculated paid amount, remaining balance, payment due date, and payment status.
+- Additional payments are recorded from Payments → Collect Payment and are kept as immutable payment history entries.
+- Payments cannot exceed the outstanding balance; multiple payments may settle the same subscription.
+- Once a subscription is fully paid, further payments are rejected. Use Renew to create the next subscription period.
+- Overdue balances block member check-in; partial balances remain check-in eligible until the due date.
+- Cancel keeps the subscription in history. There is no subscription delete flow.
+- Freeze is managed from the subscription and consumes the freeze allowance configured on the plan. Invitations are handled during attendance/guest check-in and are separate from freeze.

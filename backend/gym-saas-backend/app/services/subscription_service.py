@@ -53,7 +53,8 @@ class SubscriptionService:
         if active:
             raise HTTPException(409,"Member already has an active subscription. Use Renew instead.")
         amount=float(plan.price)
-        if abs(float(data["amount"])-amount)>0.009:
+        submitted_amount=float(data.pop("amount"))
+        if abs(submitted_amount-amount)>0.009:
             raise HTTPException(400,"Subscription amount must match the selected plan price")
         paid=float(data.pop("initial_payment_amount"))
         method=data.pop("initial_payment_method")
