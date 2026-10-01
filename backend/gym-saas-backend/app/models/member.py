@@ -1,6 +1,6 @@
 import uuid
 from datetime import date, datetime
-from sqlalchemy import String, Date, DateTime, ForeignKey, Numeric
+from sqlalchemy import String, Date, DateTime, ForeignKey, Numeric, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
@@ -19,6 +19,8 @@ class Member(Base):
     height: Mapped[float | None] = mapped_column(Numeric(5, 2))
     weight: Mapped[float | None] = mapped_column(Numeric(5, 2))
     status: Mapped[str] = mapped_column(String(50))
+    app_access_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    entry_qr_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_visit_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
