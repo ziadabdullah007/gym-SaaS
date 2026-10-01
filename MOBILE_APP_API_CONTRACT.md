@@ -61,3 +61,7 @@ The backend verifies the attendance belongs to the staff member's gym, checks in
 - Subscription/payment eligibility remains backend-enforced. Outstanding balance during the allowed grace period is permitted; overdue balance blocks entry according to the existing subscription state.
 - The legacy check-out endpoint remains for compatibility with historical records, but the initial member visit workflow does not require check-out.
 - The mobile app must use backend APIs and must never connect directly to Supabase/PostgreSQL or authorize access using a client-supplied member ID.
+
+
+### Rotating QR (60-second lifetime)
+The authenticated staff web profile requests `POST /api/v1/members/{member_id}/entry-qr` automatically on page open and every 60 seconds. The backend returns a signed token with `expires_in: 60`; attendance check-in validates signature, gym scope, and expiry. Flutter should request a fresh token through a member-authenticated self endpoint when that authentication flow is implemented; do not persist or share QR screenshots. OTP remains out of scope.

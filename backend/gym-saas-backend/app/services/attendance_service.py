@@ -1,5 +1,8 @@
 from datetime import datetime, timezone, timedelta
 import hashlib
+import jwt
+from jwt import InvalidTokenError
+from app.core.config import settings
 from fastapi import HTTPException
 from app.models.attendance import Attendance
 from app.models.member import Member
@@ -25,8 +28,17 @@ class AttendanceService:
     @staticmethod
     def check_in(db, gym_id, member_id=None, qr_token=None):
         if qr_token:
-            token_hash = hashlib.sha256(qr_token.encode("utf-8")).hexdigest()
-            member = db.query(Member).filter(Member.gym_id == gym_id, Member.entry_qr_token_hash == token_hash).first()
+            # New rotating QR credentials are signed and expire after 60 seconds.
+            # Keep legacy hashed-token validation during migration for existing members.
+            member = None
+            try:
+                claims = jwt.decode(qr_token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+                if claims.get("typ") != "gymflow_entry_qr" or claims.get("gym_id") != str(gym_id):
+                    raise HTTPException(401, "Invalid QR code")
+                member = db.query(Member).filter(Member.id == claims.get("sub"), Member.gym_id == gym_id).first()
+            except InvalidTokenError:
+                token_hash = hashlib.sha256(qr_token.encode("utf-8")).hexdigest()
+                member = db.query(Member).filter(Member.gym_id == gym_id, Member.entry_qr_token_hash == token_hash).first()
             if not member:
                 raise HTTPException(404, "Invalid QR code or member not found")
             source = "qr"
