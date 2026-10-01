@@ -1,5 +1,5 @@
 from uuid import UUID
-import hashlib, secrets
+import hashlib, secrets, base64, hmac, struct
 from datetime import datetime, timedelta, timezone
 import jwt
 from app.core.config import settings
@@ -19,9 +19,12 @@ def issue_entry_qr(member_id:UUID,db:Session=Depends(get_db),gym_id=Depends(get_
     if not obj: raise HTTPException(404,"Member not found")
     if not obj.app_access_enabled: raise HTTPException(403,"Member App access is disabled")
     now=datetime.now(timezone.utc)
-    token=jwt.encode({"typ":"gymflow_entry_qr","sub":str(obj.id),"gym_id":str(gym_id),
-        "iat":now,"exp":now+timedelta(seconds=60)},settings.JWT_SECRET_KEY,algorithm=settings.JWT_ALGORITHM)
-    return {"member_id":str(obj.id),"qr_token":token,"expires_at":(now+timedelta(seconds=60)).isoformat(),"expires_in":60}
+    expires_at=now+timedelta(seconds=60)
+    # Compact, signed token keeps the QR visually less dense than a full JWT.
+    payload=obj.id.bytes + UUID(str(gym_id)).bytes + struct.pack("!I", int(expires_at.timestamp()))
+    signature=hmac.new(settings.JWT_SECRET_KEY.encode("utf-8"), payload, hashlib.sha256).digest()[:16]
+    token="GF1."+base64.urlsafe_b64encode(payload+signature).decode("ascii").rstrip("=")
+    return {"member_id":str(obj.id),"qr_token":token,"expires_at":expires_at.isoformat(),"expires_in":60}
 
 @router.get("",response_model=list[MemberResponse])
 def list_members(db:Session=Depends(get_db),gym_id=Depends(get_current_gym_id),_=Depends(require_role(["gym_admin","staff"]))):return MemberService.get_all(db,gym_id)
