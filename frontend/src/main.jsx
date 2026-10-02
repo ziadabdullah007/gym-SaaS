@@ -184,7 +184,7 @@ function MemberModal({member,onClose,onSaved}){
 }
 
 function MemberProfile({id,onNavigate}){
- const [m,setM]=useState(null),[subs,setSubs]=useState([]),[payments,setPayments]=useState([]),[att,setAtt]=useState([]),[meas,setMeas]=useState([]),[plans,setPlans]=useState([]),[modal,setModal]=useState(null),[toast,setToast]=useState(""),[qrCredential,setQrCredential]=useState("");
+ const [m,setM]=useState(null),[subs,setSubs]=useState([]),[payments,setPayments]=useState([]),[att,setAtt]=useState([]),[meas,setMeas]=useState([]),[plans,setPlans]=useState([]),[modal,setModal]=useState(null),[toast,setToast]=useState(""),[qrCredential,setQrCredential]=useState(""),[initialPassword,setInitialPassword]=useState(""),[resetCode,setResetCode]=useState("");
  const load=async()=>{try{const [mm,s,p,a,me,pl]=await Promise.all([api.member(id),api.subscriptions(),api.payments(),api.attendance(),api.measurements(id),api.plans()]);setM(mm);setSubs(s.filter(x=>x.member_id===id));setPayments(p.filter(x=>s.some(z=>z.id===x.subscription_id&&z.member_id===id)));setAtt(a.filter(x=>x.member_id===id));setMeas(me);setPlans(pl)}catch(e){setToast(errText(e))}};useEffect(()=>{load()},[id]);
   useEffect(()=>{let alive=true;let timer;const refresh=async()=>{try{const q=await api.issueEntryQr(id);if(alive)setQrCredential(q.qr_token)}catch(e){if(alive)setToast(errText(e))}};refresh();timer=setInterval(refresh,60000);return()=>{alive=false;if(timer)clearInterval(timer)}},[id]);
  if(!m)return <Loading/>; const active=subs.find(x=>x.status==="active"); const activePlan=active&&plans.find(p=>p.id===active.plan_id);
