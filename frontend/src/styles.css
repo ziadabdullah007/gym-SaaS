@@ -28,3 +28,75 @@ nav{display:grid;gap:4px}nav button,.side-bottom button{display:flex;align-items
 .entry-qr-card>div{min-width:240px;flex:1}
 .qr-token{display:block;overflow-wrap:anywhere;margin:10px 0;padding:10px;background:#f4f6fa;border-radius:8px}
 @media(max-width:850px){.attendance-tools{grid-template-columns:1fr}.camera-scanner{order:-1}}
+
+
+/* GymAURA visual refresh: gradient identity + accessible light/dark themes */
+:root{
+ --aura-blue:#1264e8;--aura-cyan:#08c9d4;--aura-green:#65df45;
+ --aura-gradient:linear-gradient(120deg,#65df45 0%,#08c9d4 42%,#1264e8 100%);
+ --page-bg:#f5f8ff;--surface:#ffffff;--surface-soft:#f4f7ff;--text:#14233f;
+ --muted:#687895;--border:#e0e7f3;--hover:#edf4ff;--accent:#1264e8;--accent-soft:#e8f1ff;
+ color-scheme:light;
+}
+:root[data-theme="dark"]{
+ --page-bg:#0b1220;--surface:#131e30;--surface-soft:#1a2940;--text:#edf4ff;
+ --muted:#a3b3cb;--border:#2a3b55;--hover:#213552;--accent:#4b9aff;--accent-soft:#1b3557;
+ color-scheme:dark;
+}
+html,body,#root{min-height:100%;background:var(--page-bg);color:var(--text)}
+body{background:var(--page-bg);color:var(--text);transition:background .2s ease,color .2s ease}
+.sidebar,header,.panel,.stat,.table-wrap,.modal,.login-card{background:var(--surface);color:var(--text);border-color:var(--border)}
+.sidebar{box-shadow:8px 0 28px #10264a08}
+.brand{gap:10px}
+.brand-logo{display:block;width:54px;height:54px;object-fit:contain;flex:none;border-radius:10px;background:#fff}
+.brand.center{gap:12px}
+.brand.center .brand-logo{width:116px;height:116px;margin:0 auto 6px}
+.brand.center{flex-direction:column;text-align:center}
+.brand b{color:var(--text);font-size:17px;letter-spacing:-.25px}
+.brand small{color:var(--muted)}
+.primary{background:var(--aura-gradient);box-shadow:0 5px 14px #1264e826;color:#fff;transition:filter .15s,transform .15s}
+.primary:hover{background:var(--aura-gradient);filter:saturate(1.12) brightness(.97);transform:translateY(-1px)}
+.secondary,.toolbar button,.row-actions button,td>button{background:var(--accent-soft);color:var(--accent)}
+nav button{color:var(--muted)}
+nav button:hover,.side-bottom button:hover,.header-actions button:hover{background:var(--hover);color:var(--accent)}
+nav button.active{background:linear-gradient(100deg,#e8f8ef,#e5f6ff 55%,#e9efff);color:#135ac4;box-shadow:inset 3px 0 0 #08c9d4}
+.stat-icon{background:linear-gradient(135deg,#e7f8e9,#e3faff 55%,#e7edff);color:#1264e8}
+.subscription-card{background:var(--surface-soft);color:var(--text)}
+th{background:var(--surface-soft);color:var(--muted)}
+td,th,.mini-list>div,.dashboard-row{border-color:var(--border)}
+input,select,textarea{background:var(--surface);color:var(--text);border-color:var(--border)}
+input::placeholder,textarea::placeholder{color:var(--muted)}
+.crumb,.bar-label b{color:var(--text)}
+.muted,.page-head p,.details small,.stat small,.profile p,.brand small{color:var(--muted)}
+.bar-track{background:var(--surface-soft)}
+.bar-track span{background:var(--aura-gradient)}
+.legend-dot{background:var(--aura-blue)}
+.camera-scanner{background:var(--surface-soft);border-color:var(--border)}
+.qr-token{background:var(--surface-soft);color:var(--text)}
+.theme-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 11px;border:1px solid var(--border);border-radius:9px;background:var(--surface-soft);color:var(--text);font-size:12px;font-weight:700}
+.theme-toggle:hover{border-color:var(--aura-cyan);background:var(--hover)}
+.login-theme-toggle{position:fixed;right:22px;top:20px;z-index:30}
+.login{background:radial-gradient(ellipse at 18% 15%,#dff9ee 0%,transparent 34%),radial-gradient(ellipse at 85% 80%,#e1f0ff 0%,transparent 38%),var(--page-bg)}
+.login-card{border:1px solid var(--border);box-shadow:0 24px 70px #142d5014}
+.login-card h1{color:var(--text)}
+.login-card .brand{margin-bottom:22px}
+.login-card .brand b{font-size:23px}
+.login-card .brand small{font-size:12px}
+.badge{background:var(--accent-soft);color:var(--accent)}
+:root[data-theme="dark"] .login{background:radial-gradient(ellipse at 15% 10%,#123c3b 0%,transparent 38%),radial-gradient(ellipse at 90% 85%,#142f5b 0%,transparent 42%),var(--page-bg)}
+:root[data-theme="dark"] .login-card{box-shadow:0 24px 70px #0005}
+:root[data-theme="dark"] .sidebar{box-shadow:8px 0 28px #0002}
+:root[data-theme="dark"] nav button.active{background:linear-gradient(100deg,#163b35,#16364a 55%,#1b3156);color:#bdeaff;box-shadow:inset 3px 0 0 #08c9d4}
+:root[data-theme="dark"] .stat-icon{background:linear-gradient(135deg,#1c473c,#173e51 55%,#203b69);color:#8bdfff}
+:root[data-theme="dark"] .alert{background:#442b31;color:#ffdce0;border-color:#70434d}
+:root[data-theme="dark"] .alert.error{background:#492b33;color:#ffdce0}
+:root[data-theme="dark"] .badge.active{background:#173e32;color:#8ce3b3}
+:root[data-theme="dark"] .badge.disabled,:root[data-theme="dark"] .badge.cancelled{background:#4b2b32;color:#ffb7c0}
+:root[data-theme="dark"] .badge.pending_password{background:#493b1d;color:#f6d58b}
+:root[data-theme="dark"] .badge.expired{background:#303b4d;color:#c0cadd}
+@media(max-width:700px){
+ .brand-logo{width:44px;height:44px}
+ .brand.center .brand-logo{width:96px;height:96px}
+ .login-theme-toggle{right:12px;top:12px}
+ .theme-toggle span{display:inline}
+}

@@ -16,7 +16,7 @@ function errText(e){return e?.message||"Something went wrong";}
 function Modal({title,onClose,children,wide=false}){return <div className="overlay"><div className={"modal "+(wide?"wide":"")}><div className="modal-head"><h2>{title}</h2><button className="icon-btn" onClick={onClose}>×</button></div>{children}</div></div>}
 function Toast({msg,type="ok"}){return msg?<div className={"toast "+type}>{msg}</div>:null}
 
-function Shell({children,role,onNavigate,page,onLogout}){
+function Shell({children,role,onNavigate,page,onLogout,theme,onToggleTheme}){
  const [status,setStatus]=useState(null);
  const saas=role==="saas_admin", staff=role==="staff";
  const nav=saas?[
@@ -29,12 +29,12 @@ function Shell({children,role,onNavigate,page,onLogout}){
  const u=user();
  const check=async()=>{try{await api.health();setStatus("Online")}catch{setStatus("Offline")}};
  return <div className="app"><aside className="sidebar">
-   <div className="brand"><span className="logo">G</span><div><b>GymFlow Pro</b><small>{saas?"SaaS Administrator":staff?"Staff":"Gym Administrator"}</small></div></div>
+   <div className="brand"><img className="brand-logo" src="/gym-aura-logo.png" alt="GymAURA logo"/><div><b>GymAURA</b><small>{saas?"SaaS Administrator":staff?"Staff":"Gym Administrator"}</small></div></div>
    <nav>{nav.map(([id,label,ico])=><button key={id} className={page===id?"active":""} onClick={()=>onNavigate(id)}><span>{ico}</span>{label}</button>)}</nav>
    <div className="side-bottom"><button onClick={()=>onNavigate("support")}>? Support</button><button onClick={()=>{clearSession();onLogout()}}>↪ Sign out</button></div>
  </aside><main className="main">
    <header><div className="crumb">{page.replaceAll("-"," ")}</div><div className="header-actions">
-    <button className="status" onClick={check}>● {status||"System Status"}</button>
+    <button className="theme-toggle" onClick={onToggleTheme} aria-label={`Switch to ${theme==="dark"?"light":"dark"} mode`} title={`Switch to ${theme==="dark"?"light":"dark"} mode`}>{theme==="dark"?"☀":"☾"} <span>{theme==="dark"?"Light":"Dark"}</span></button><button className="status" onClick={check}>● {status||"System Status"}</button>
 <button onClick={()=>alert("No new notifications.")}>♧</button>
     <button className="avatar" title={u?.username} onClick={()=>alert(`${u?.first_name||""} ${u?.last_name||""}\nUsername: ${u?.username}\nRole: ${u?.role}`)}>{(u?.first_name||u?.username||"U")[0].toUpperCase()}</button>
    </div></header>
@@ -71,14 +71,14 @@ function ActivateAccount({onDone}){
  }
 
  if(step==="done")return <div className="login"><div className="login-card">
-  <div className="brand center"><span className="logo">G</span><div><b>GymFlow Pro</b><small>Gym SaaS Management</small></div></div>
+  <div className="brand center"><img className="brand-logo" src="/gym-aura-logo.png" alt="GymAURA logo"/><div><b>GymAURA</b><small>Gym SaaS Management</small></div></div>
   <div className="alert">Account activated successfully.</div>
   <p className="muted">Your account is ready. You can now sign in with your username and new password.</p>
   <button className="primary full" onClick={onDone}>Continue to sign in</button>
  </div></div>;
 
  if(step==="password")return <div className="login"><div className="login-card">
-  <div className="brand center"><span className="logo">G</span><div><b>GymFlow Pro</b><small>Secure account setup</small></div></div>
+  <div className="brand center"><img className="brand-logo" src="/gym-aura-logo.png" alt="GymAURA logo"/><div><b>GymAURA</b><small>Secure account setup</small></div></div>
   <h1>Create your password</h1>
   <p className="muted">Create a password of at least 8 characters for <b>{username}</b>.</p>
   {error&&<div className="alert error">{error}</div>}
@@ -90,7 +90,7 @@ function ActivateAccount({onDone}){
  </div></div>;
 
  return <div className="login"><div className="login-card">
-  <div className="brand center"><span className="logo">G</span><div><b>GymFlow Pro</b><small>Gym SaaS Management</small></div></div>
+  <div className="brand center"><img className="brand-logo" src="/gym-aura-logo.png" alt="GymAURA logo"/><div><b>GymAURA</b><small>Gym SaaS Management</small></div></div>
   <h1>Activate your account</h1>
   <p className="muted">Use the username and 6-digit activation code provided by your administrator.</p>
   {error&&<div className="alert error">{error}</div>}
@@ -106,7 +106,7 @@ function ActivateAccount({onDone}){
 function Login({onLogin,onActivate}){
  const [username,setUsername]=useState("");const [password,setPassword]=useState("");const [loading,setLoading]=useState(false);const [error,setError]=useState("");
  async function submit(e){e.preventDefault();setLoading(true);setError("");try{const d=await api.login({username,password});setSession(d);onLogin(d.user)}catch(e){setError(errText(e))}finally{setLoading(false)}}
- return <div className="login"><div className="login-card"><div className="brand center"><span className="logo">G</span><div><b>GymFlow Pro</b><small>Gym SaaS Management</small></div></div><h1>Welcome back</h1><p className="muted">Sign in with your username and password.</p>{error&&<div className="alert error">{error}</div>}<form onSubmit={submit}><label>Username<input value={username} onChange={e=>setUsername(e.target.value)} required autoComplete="username"/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required autoComplete="current-password"/></label><button className="primary full" disabled={loading}>{loading?"Signing in…":"Sign in"}</button></form><button className="text-btn full" type="button" onClick={onActivate}>First time here? Activate your account</button></div></div>
+ return <div className="login"><div className="login-card"><div className="brand center"><img className="brand-logo" src="/gym-aura-logo.png" alt="GymAURA logo"/><div><b>GymAURA</b><small>Gym SaaS Management</small></div></div><h1>Welcome back</h1><p className="muted">Sign in with your username and password.</p>{error&&<div className="alert error">{error}</div>}<form onSubmit={submit}><label>Username<input value={username} onChange={e=>setUsername(e.target.value)} required autoComplete="username"/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required autoComplete="current-password"/></label><button className="primary full" disabled={loading}>{loading?"Signing in…":"Sign in"}</button></form><button className="text-btn full" type="button" onClick={onActivate}>First time here? Activate your account</button></div></div>
 }
 
 function Page({title,subtitle,actions,children}){return <><div className="page-head"><div><h1>{title}</h1>{subtitle&&<p>{subtitle}</p>}</div><div className="actions">{actions}</div></div>{children}</>}
@@ -343,7 +343,7 @@ function Guests(){const [rows,setRows]=useState([]),[members,setMembers]=useStat
 
 function Settings({role}){const [gym,setGym]=useState(null),[f,setF]=useState(null),[toast,setToast]=useState("");useEffect(()=>{if(role!=="gym_admin")return;let alive=true;(async()=>{try{const x=await api.getGym();if(alive){setGym(x);setF(x)}}catch(e){if(alive)setToast(errText(e))}})();return()=>{alive=false}},[role]);if(role==="saas_admin")return <Page title="Settings" subtitle="Platform settings and API connectivity."><Panel title="Backend connection"><p>API is configured through <code>VITE_API_URL</code>.</p><button className="secondary" onClick={async()=>{try{await api.health();setToast("Backend is online")}catch(e){setToast(errText(e))}}}>Test connection</button></Panel><Toast msg={toast}/></Page>;if(!f)return <Loading/>;return <Page title="Gym Settings" subtitle="Update your gym information."><Panel title="Gym information"><form className="formgrid" onSubmit={async e=>{e.preventDefault();try{const x=await api.updateGym(f);setGym(x);setToast("Saved")}catch(e){setToast(errText(e))}}}>{["name","owner_name","email","phone","address"].map(k=><label key={k}>{k.replaceAll("_"," ")}<input value={f[k]||""} onChange={e=>setF({...f,[k]:e.target.value})}/></label>)}<button className="primary">Save changes</button></form></Panel><Toast msg={toast}/></Page>}
 
-function Support(){return <Page title="Support" subtitle="GymFlow Pro API support."><Panel title="Need help?"><p className="muted">Use the API documentation to inspect every endpoint and schema.</p><button className="primary" onClick={()=>window.open(`${location.protocol}//${location.hostname}:8000/docs`,"_blank")}>Open API Docs</button></Panel></Page>}
+function Support(){return <Page title="Support" subtitle="GymAURA API support."><Panel title="Need help?"><p className="muted">Use the API documentation to inspect every endpoint and schema.</p><button className="primary" onClick={()=>window.open(`${location.protocol}//${location.hostname}:8000/docs`,"_blank")}>Open API Docs</button></Panel></Page>}
 
 function Toolbar({value,onChange,placeholder}){return <div className="toolbar"><input placeholder={placeholder} value={value} onChange={e=>onChange(e.target.value)}/><button onClick={()=>onChange("")}>Clear</button></div>}
 function Table({headers,rows}){return <div className="table-wrap"><table><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{rows.length?rows.map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j}>{c}</td>)}</tr>):<tr><td colSpan={headers.length}><Empty/></td></tr>}</tbody></table></div>}
@@ -355,8 +355,11 @@ function Badge({value}){
 
 function App(){
  const [u,setU]=useState(user()),[page,setPage]=useState("dashboard"),[param,setParam]=useState(null),[activating,setActivating]=useState(false);
- if(activating)return <ActivateAccount onDone={()=>setActivating(false)}/>;
- if(!token()||!u)return <Login onLogin={x=>{setU(x);setPage("dashboard")}} onActivate={()=>setActivating(true)}/>;
+ const [theme,setTheme]=useState(()=>{try{return localStorage.getItem("gymaura-theme")||"light"}catch{return "light"}});
+ useEffect(()=>{document.documentElement.dataset.theme=theme;try{localStorage.setItem("gymaura-theme",theme)}catch{}},[theme]);
+ const toggleTheme=()=>setTheme(current=>current==="dark"?"light":"dark");
+ if(activating)return <div className="themed-page"><button className="theme-toggle login-theme-toggle" onClick={toggleTheme}>{theme==="dark"?"☀ Light mode":"☾ Dark mode"}</button><ActivateAccount onDone={()=>setActivating(false)}/></div>;
+ if(!token()||!u)return <div className="themed-page"><button className="theme-toggle login-theme-toggle" onClick={toggleTheme}>{theme==="dark"?"☀ Light mode":"☾ Dark mode"}</button><Login onLogin={x=>{setU(x);setPage("dashboard")}} onActivate={()=>setActivating(true)}/></div>;
  const go=(p,id=null)=>{setPage(p);setParam(id)};
  let content;
  if(page==="dashboard")content=<Dashboard role={u.role} onNavigate={go}/>;
@@ -375,7 +378,7 @@ function App(){
  else if(page==="saas-plans")content=<SaaSPlans/>;
  else if(page==="gym-subs")content=<GymSubs/>;
  else content=<Dashboard role={u.role} onNavigate={go}/>;
- return <Shell role={u.role} page={page} onNavigate={go} onLogout={()=>setU(null)}>{content}</Shell>
+ return <Shell role={u.role} page={page} onNavigate={go} onLogout={()=>setU(null)} theme={theme} onToggleTheme={toggleTheme}>{content}</Shell>
 }
 function SaaSPlans(){const [rows,setRows]=useState([]),[open,setOpen]=useState(false),[toast,setToast]=useState("");const load=()=>api.saasPlans().then(setRows).catch(e=>setToast(errText(e)));useEffect(() => {
   load();
@@ -385,4 +388,4 @@ function GymSubs(){const [rows,setRows]=useState([]),[gyms,setGyms]=useState([])
   load();
 }, []);;return <Page title="Gym Subscriptions" subtitle="Manage platform subscriptions for each gym." actions={<button className="primary" onClick={()=>setOpen(true)}>＋ New Subscription</button>}><Table headers={["Gym","Plan","Period","Status","Actions"]} rows={rows.map(s=>[gyms.find(g=>g.id===s.gym_id)?.name||"Unknown gym",plans.find(p=>p.id===s.saas_plan_id)?.name||"Unknown plan",`${fmt(s.start_date)} — ${fmt(s.end_date)}`,<Badge value={s.status}/>,<button onClick={()=>setOpen(s)}>Edit</button>])}/>{open&&<GymSubModal sub={open===true?null:open} gyms={gyms} plans={plans} onClose={()=>setOpen(false)} onSaved={()=>{setOpen(false);load()}}/>}<Toast msg={toast}/></Page>}
 function GymSubModal({sub,gyms,plans,onClose,onSaved}){const [f,setF]=useState(sub?{...sub}:{gym_id:gyms[0]?.id||"",saas_plan_id:plans[0]?.id||"",start_date:new Date().toISOString().slice(0,10),end_date:""}),[error,setError]=useState("");async function save(e){e.preventDefault();try{if(sub)await api.updateGymSub(sub.id,f);else await api.createGymSub(f);onSaved()}catch(e){setError(errText(e))}}return <Modal title={sub?"Update Gym Subscription":"New Gym Subscription"} onClose={onClose}><form onSubmit={save}>{error&&<div className="alert error">{error}</div>}<label>Gym<select value={f.gym_id} disabled={!!sub} onChange={e=>setF({...f,gym_id:e.target.value})}>{gyms.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></label><label>SaaS plan<select value={f.saas_plan_id} onChange={e=>setF({...f,saas_plan_id:e.target.value})}>{plans.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label>Start date<input type="date" value={f.start_date} onChange={e=>setF({...f,start_date:e.target.value})}/></label><label>End date<input type="date" value={f.end_date} onChange={e=>setF({...f,end_date:e.target.value})}/></label>{sub&&<label>Status<select value={f.status} onChange={e=>setF({...f,status:e.target.value})}><option>active</option><option>expired</option><option>cancelled</option></select></label>}<button className="primary full">Save</button></form></Modal>}
-class AppErrorBoundary extends React.Component{constructor(props){super(props);this.state={error:null}}static getDerivedStateFromError(error){return {error}}componentDidCatch(error,info){console.error("GymFlow UI error",error,info)}render(){if(this.state.error)return <div className="login"><div className="login-card"><div className="brand center"><span className="logo">G</span><div><b>GymFlow Pro</b><small>Gym SaaS Management</small></div></div><h1>Something went wrong</h1><p className="muted">This page could not be displayed. Your data is safe.</p><div className="alert error">{this.state.error?.message||"Unexpected UI error"}</div><button className="primary full" onClick={()=>window.location.reload()}>Reload</button></div></div>;return this.props.children}}createRoot(document.getElementById("root")).render(<AppErrorBoundary><App/></AppErrorBoundary>);
+class AppErrorBoundary extends React.Component{constructor(props){super(props);this.state={error:null}}static getDerivedStateFromError(error){return {error}}componentDidCatch(error,info){console.error("GymAURA UI error",error,info)}render(){if(this.state.error)return <div className="login"><div className="login-card"><div className="brand center"><img className="brand-logo" src="/gym-aura-logo.png" alt="GymAURA logo"/><div><b>GymAURA</b><small>Gym SaaS Management</small></div></div><h1>Something went wrong</h1><p className="muted">This page could not be displayed. Your data is safe.</p><div className="alert error">{this.state.error?.message||"Unexpected UI error"}</div><button className="primary full" onClick={()=>window.location.reload()}>Reload</button></div></div>;return this.props.children}}createRoot(document.getElementById("root")).render(<AppErrorBoundary><App/></AppErrorBoundary>);
