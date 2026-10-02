@@ -1,6 +1,5 @@
 from datetime import datetime, timezone, timedelta
-from uuid import UUID
-import hashlib, base64, hmac, struct
+import hashlib
 import jwt
 from jwt import InvalidTokenError
 from app.core.config import settings
@@ -32,33 +31,14 @@ class AttendanceService:
             # New rotating QR credentials are signed and expire after 60 seconds.
             # Keep legacy hashed-token validation during migration for existing members.
             member = None
-            if qr_token.startswith("GF1."):
-                try:
-                    encoded=qr_token[4:]
-                    raw=base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
-                    if len(raw) != 52:
-                        raise ValueError("Invalid compact QR length")
-                    payload, supplied_signature=raw[:36], raw[36:]
-                    expected_signature=hmac.new(settings.JWT_SECRET_KEY.encode("utf-8"), payload, hashlib.sha256).digest()[:16]
-                    if not hmac.compare_digest(supplied_signature, expected_signature):
-                        raise ValueError("Invalid compact QR signature")
-                    member_id=UUID(bytes=payload[:16])
-                    token_gym_id=UUID(bytes=payload[16:32])
-                    expires_at=struct.unpack("!I", payload[32:36])[0]
-                    if token_gym_id != UUID(str(gym_id)) or datetime.now(timezone.utc).timestamp() > expires_at:
-                        raise ValueError("Expired or wrong-gym QR")
-                    member=db.query(Member).filter(Member.id == member_id, Member.gym_id == gym_id).first()
-                except Exception:
-                    raise HTTPException(401, "Invalid or expired QR code")
-            else:
-                try:
-                    claims = jwt.decode(qr_token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-                    if claims.get("typ") != "gymflow_entry_qr" or claims.get("gym_id") != str(gym_id):
-                        raise HTTPException(401, "Invalid QR code")
-                    member = db.query(Member).filter(Member.id == claims.get("sub"), Member.gym_id == gym_id).first()
-                except InvalidTokenError:
-                    token_hash = hashlib.sha256(qr_token.encode("utf-8")).hexdigest()
-                    member = db.query(Member).filter(Member.gym_id == gym_id, Member.entry_qr_token_hash == token_hash).first()
+            try:
+                claims = jwt.decode(qr_token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+                if claims.get("typ") != "gymflow_entry_qr" or claims.get("gym_id") != str(gym_id):
+                    raise HTTPException(401, "Invalid QR code")
+                member = db.query(Member).filter(Member.id == claims.get("sub"), Member.gym_id == gym_id).first()
+            except InvalidTokenError:
+                token_hash = hashlib.sha256(qr_token.encode("utf-8")).hexdigest()
+                member = db.query(Member).filter(Member.gym_id == gym_id, Member.entry_qr_token_hash == token_hash).first()
             if not member:
                 raise HTTPException(404, "Invalid QR code or member not found")
             source = "qr"

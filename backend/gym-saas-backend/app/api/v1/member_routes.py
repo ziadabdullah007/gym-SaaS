@@ -1,5 +1,6 @@
 from uuid import UUID
-import hashlib, secrets, base64, hmac, struct
+from pydantic import BaseModel, Field
+import hashlib, secrets
 from datetime import datetime, timedelta, timezone
 import jwt
 from app.core.config import settings
@@ -10,8 +11,38 @@ from app.core.dependencies import require_role,get_current_gym_id
 from app.schemas.member_schema import MemberCreate,MemberUpdate,MemberResponse
 from app.services.member_service import MemberService
 router=APIRouter(prefix="/api/v1/members",tags=["Members"])
+
+class MemberLoginInput(BaseModel):
+    gym_id: UUID
+    phone: str
+    password: str
+
+class MemberPasswordInput(BaseModel):
+    password: str = Field(min_length=8, max_length=128)
+
+class MemberPasswordResetInput(BaseModel):
+    phone: str
+    reset_code: str
+    new_password: str = Field(min_length=8, max_length=128)
 @router.post("",response_model=MemberResponse)
 def create(data:MemberCreate,db:Session=Depends(get_db),gym_id=Depends(get_current_gym_id),_=Depends(require_role(["gym_admin","staff"]))):return MemberService.create(db,gym_id,data.model_dump())
+@router.post("/app-login")
+def member_app_login(data:MemberLoginInput,db:Session=Depends(get_db)):
+    return MemberService.authenticate_member(db,data.gym_id,data.phone,data.password)
+
+@router.post("/{member_id}/set-password")
+def set_initial_password(member_id:UUID,data:MemberPasswordInput,db:Session=Depends(get_db),gym_id=Depends(get_current_gym_id),_=Depends(require_role(["gym_admin","staff"]))):
+    MemberService.set_initial_password(db,member_id,gym_id,data.password)
+    return {"message":"Initial member app password set successfully"}
+
+@router.post("/{member_id}/password-reset-code")
+def generate_password_reset_code(member_id:UUID,db:Session=Depends(get_db),gym_id=Depends(get_current_gym_id),_=Depends(require_role(["gym_admin","staff"]))):
+    return MemberService.generate_password_reset_code(db,member_id,gym_id)
+
+@router.post("/password-reset/complete")
+def complete_password_reset(data:MemberPasswordResetInput,db:Session=Depends(get_db)):
+    return MemberService.reset_password(db,data.phone,data.reset_code,data.new_password)
+
 @router.post("/{member_id}/entry-qr")
 def issue_entry_qr(member_id:UUID,db:Session=Depends(get_db),gym_id=Depends(get_current_gym_id),_=Depends(require_role(["gym_admin","staff"]))):
     """Issue a short-lived signed QR token. Clients refresh it every 60 seconds."""
@@ -19,12 +50,9 @@ def issue_entry_qr(member_id:UUID,db:Session=Depends(get_db),gym_id=Depends(get_
     if not obj: raise HTTPException(404,"Member not found")
     if not obj.app_access_enabled: raise HTTPException(403,"Member App access is disabled")
     now=datetime.now(timezone.utc)
-    expires_at=now+timedelta(seconds=60)
-    # Compact, signed token keeps the QR visually less dense than a full JWT.
-    payload=obj.id.bytes + UUID(str(gym_id)).bytes + struct.pack("!I", int(expires_at.timestamp()))
-    signature=hmac.new(settings.JWT_SECRET_KEY.encode("utf-8"), payload, hashlib.sha256).digest()[:16]
-    token="GF1."+base64.urlsafe_b64encode(payload+signature).decode("ascii").rstrip("=")
-    return {"member_id":str(obj.id),"qr_token":token,"expires_at":expires_at.isoformat(),"expires_in":60}
+    token=jwt.encode({"typ":"gymflow_entry_qr","sub":str(obj.id),"gym_id":str(gym_id),
+        "iat":now,"exp":now+timedelta(seconds=60)},settings.JWT_SECRET_KEY,algorithm=settings.JWT_ALGORITHM)
+    return {"member_id":str(obj.id),"qr_token":token,"expires_at":(now+timedelta(seconds=60)).isoformat(),"expires_in":60}
 
 @router.get("",response_model=list[MemberResponse])
 def list_members(db:Session=Depends(get_db),gym_id=Depends(get_current_gym_id),_=Depends(require_role(["gym_admin","staff"]))):return MemberService.get_all(db,gym_id)

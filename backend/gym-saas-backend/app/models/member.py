@@ -21,6 +21,9 @@ class Member(Base):
     status: Mapped[str] = mapped_column(String(50))
     app_access_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     entry_qr_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    password_reset_code_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    password_reset_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_visit_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -31,3 +34,7 @@ class Member(Base):
     attendance_records = relationship("Attendance", back_populates="member")
     body_measurements = relationship("BodyMeasurement", back_populates="member")
     guest_invitations = relationship("GuestInvitation", back_populates="member")
+
+    @property
+    def app_has_password(self) -> bool:
+        return bool(self.password_hash)
