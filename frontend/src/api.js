@@ -42,7 +42,7 @@ export const api={
   members:()=>request("/api/v1/members"),
   member:(id)=>request(`/api/v1/members/${id}`),
   createMember:(body)=>request("/api/v1/members",{method:"POST",body}),
-  memberAppLogin:(body)=>request("/api/v1/members/app-login",{method:"POST",body,auth:false}),\n  setMemberUsername:(id,username)=>request(`/api/v1/members/${id}/set-username`,{method:"POST",body:{username}}),
+  memberAppLogin:(body)=>request("/api/v1/members/app-login",{method:"POST",body,auth:false}),  setMemberUsername:(id,username)=>request(`/api/v1/members/${id}/set-username`,{method:"POST",body:{username}}),
   setMemberPassword:(id,password)=>request(`/api/v1/members/${id}/set-password`,{method:"POST",body:{password}}),
   generateMemberPasswordResetCode:(id)=>request(`/api/v1/members/${id}/password-reset-code`,{method:"POST"}),
   completeMemberPasswordReset:(body)=>request("/api/v1/members/password-reset/complete",{method:"POST",body}),
