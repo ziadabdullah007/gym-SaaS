@@ -1,20 +1,36 @@
 from datetime import datetime,timezone
 from fastapi import HTTPException
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
+from app.models.user import User
 from app.models.member import Member
 from app.repositories.member_repository import MemberRepository
 from app.core.security import hash_password, verify_password, create_access_token
 import secrets
+import re
 from datetime import timedelta
 class MemberService:
     @staticmethod
     def create(db,gym_id,data):
         now=datetime.now(timezone.utc)
         password=data.pop("password", None)
-        if password is not None and len(password) < 8:
+        username=str(data.pop("username", "")).strip().lower()
+        if not username:
+            raise HTTPException(400, "Username is required.")
+        if db.query(Member).filter(func.lower(Member.username) == username).first() or db.query(User).filter(func.lower(User.username) == username).first():
+            raise HTTPException(409, "Username already exists. Please choose another username.")
+        if len(password or "") < 8:
             raise HTTPException(400, "Password must be at least 8 characters.")
         obj=Member(gym_id=gym_id,status="active",app_access_enabled=True,joined_at=now,created_at=now,updated_at=now,
-                   password_hash=hash_password(password) if password else None, **data)
-        db.add(obj); db.commit(); db.refresh(obj); return obj
+                   username=username,password_hash=hash_password(password), **data)
+        db.add(obj)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(409, "Username already exists. Please choose another username.")
+        db.refresh(obj)
+        return obj
     @staticmethod
     def get_all(db,gym_id): return MemberRepository.get_all(db,gym_id)
     @staticmethod
@@ -29,14 +45,36 @@ class MemberService:
             obj.entry_qr_token_hash = None
         obj.updated_at=datetime.now(timezone.utc); db.commit(); db.refresh(obj); return obj
     @staticmethod
-    def authenticate_member(db, gym_id, phone, password):
-        obj=db.query(Member).filter(Member.gym_id==gym_id,Member.phone==phone).first()
+    def authenticate_member(db, username, password):
+        username=str(username).strip().lower()
+        obj=db.query(Member).filter(func.lower(Member.username)==username).first()
         if not obj or not obj.app_access_enabled or not obj.password_hash or not verify_password(password,obj.password_hash):
-            raise HTTPException(401,"Invalid phone number or password.")
+            raise HTTPException(401,"Invalid username or password.")
         token=create_access_token(obj.id,"member",obj.gym_id)
-        return {"access_token":token,"token_type":"bearer","member":{"id":str(obj.id),"gym_id":str(obj.gym_id),"first_name":obj.first_name,"last_name":obj.last_name,"phone":obj.phone}}
+        return {"access_token":token,"token_type":"bearer","member":{"id":str(obj.id),"username":obj.username,"first_name":obj.first_name,"last_name":obj.last_name,"phone":obj.phone}}
 
     @staticmethod
+    def set_username(db, member_id, gym_id, username):
+        obj=MemberRepository.get_by_id(db,member_id,gym_id)
+        if not obj: raise HTTPException(404,"Member not found")
+        username=str(username).strip().lower()
+        if not username: raise HTTPException(400,"Username is required.")
+        if not re.match(r"^[A-Za-z0-9._-]{3,50}$", username):
+            raise HTTPException(400,"Username must be 3-50 characters using letters, numbers, dot, underscore or hyphen.")
+        existing_member=db.query(Member).filter(func.lower(Member.username)==username, Member.id!=member_id).first()
+        existing_user=db.query(User).filter(func.lower(User.username)==username).first()
+        if existing_member or existing_user:
+            raise HTTPException(409,"Username already exists. Please choose another username.")
+        obj.username=username
+        obj.updated_at=datetime.now(timezone.utc)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(409,"Username already exists. Please choose another username.")
+        db.refresh(obj)
+        return obj
+
     def set_initial_password(db, member_id, gym_id, password):
         obj=MemberRepository.get_by_id(db,member_id,gym_id)
         if not obj: raise HTTPException(404,"Member not found")
@@ -59,9 +97,9 @@ class MemberService:
         return {"reset_code":code,"expires_in_minutes":10}
 
     @staticmethod
-    def reset_password(db, phone, code, new_password):
+    def reset_password(db, username, code, new_password):
         if len(new_password) < 8: raise HTTPException(400,"Password must be at least 8 characters.")
-        candidates=db.query(Member).filter(Member.phone==phone, Member.password_reset_code_hash.isnot(None)).all()
+        candidates=db.query(Member).filter(func.lower(Member.username)==str(username).strip().lower(), Member.password_reset_code_hash.isnot(None)).all()
         now=datetime.now(timezone.utc)
         for obj in candidates:
             expires=obj.password_reset_expires_at

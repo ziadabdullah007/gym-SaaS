@@ -14,6 +14,7 @@ class Member(Base):
     last_name: Mapped[str] = mapped_column(String(100))
     email: Mapped[str | None] = mapped_column(String(255))
     phone: Mapped[str] = mapped_column(String(50))
+    username: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     date_of_birth: Mapped[date | None] = mapped_column(Date)
     gender: Mapped[str | None] = mapped_column(String(20))
     height: Mapped[float | None] = mapped_column(Numeric(5, 2))

@@ -13,22 +13,28 @@ from app.services.member_service import MemberService
 router=APIRouter(prefix="/api/v1/members",tags=["Members"])
 
 class MemberLoginInput(BaseModel):
-    gym_id: UUID
-    phone: str
+    username: str
     password: str
 
 class MemberPasswordInput(BaseModel):
     password: str = Field(min_length=8, max_length=128)
 
+class MemberUsernameInput(BaseModel):
+    username: str = Field(min_length=3, max_length=50, pattern=r"^[A-Za-z0-9._-]+$")
+
 class MemberPasswordResetInput(BaseModel):
-    phone: str
+    username: str
     reset_code: str
     new_password: str = Field(min_length=8, max_length=128)
 @router.post("",response_model=MemberResponse)
 def create(data:MemberCreate,db:Session=Depends(get_db),gym_id=Depends(get_current_gym_id),_=Depends(require_role(["gym_admin","staff"]))):return MemberService.create(db,gym_id,data.model_dump())
 @router.post("/app-login")
 def member_app_login(data:MemberLoginInput,db:Session=Depends(get_db)):
-    return MemberService.authenticate_member(db,data.gym_id,data.phone,data.password)
+    return MemberService.authenticate_member(db,data.username,data.password)
+
+@router.post("/{member_id}/set-username", response_model=MemberResponse)
+def set_username(member_id:UUID,data:MemberUsernameInput,db:Session=Depends(get_db),gym_id=Depends(get_current_gym_id),_=Depends(require_role(["gym_admin","staff"]))):
+    return MemberService.set_username(db,member_id,gym_id,data.username)
 
 @router.post("/{member_id}/set-password")
 def set_initial_password(member_id:UUID,data:MemberPasswordInput,db:Session=Depends(get_db),gym_id=Depends(get_current_gym_id),_=Depends(require_role(["gym_admin","staff"]))):
@@ -41,7 +47,7 @@ def generate_password_reset_code(member_id:UUID,db:Session=Depends(get_db),gym_i
 
 @router.post("/password-reset/complete")
 def complete_password_reset(data:MemberPasswordResetInput,db:Session=Depends(get_db)):
-    return MemberService.reset_password(db,data.phone,data.reset_code,data.new_password)
+    return MemberService.reset_password(db,data.username,data.reset_code,data.new_password)
 
 @router.post("/{member_id}/entry-qr")
 def issue_entry_qr(member_id:UUID,db:Session=Depends(get_db),gym_id=Depends(get_current_gym_id),_=Depends(require_role(["gym_admin","staff"]))):
