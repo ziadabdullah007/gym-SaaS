@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.security import decode_access_token
 from app.db.database import get_db
 from app.models.user import User
+from app.models.member import Member
 from app.repositories.user_repository import UserRepository
 from app.repositories.gym_repository import GymRepository
 from app.repositories.staff_repository import StaffRepository
@@ -58,3 +59,28 @@ def require_role(allowed_roles: list[str]):
 def require_gym_access(resource_gym_id: UUID, current_gym_id: UUID) -> None:
     if resource_gym_id != current_gym_id:
         raise HTTPException(status_code=404, detail="Resource not found")
+
+
+def get_current_member(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> Member:
+    """Authenticate a Member App token and return only that member."""
+    try:
+        payload = decode_access_token(credentials.credentials)
+        user_id = UUID(payload["sub"])
+        role = payload.get("role")
+    except (ValueError, KeyError, TypeError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired member token")
+
+    if role != "member":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Member access required")
+
+    member = db.query(Member).filter(Member.id == user_id).first()
+    if not member:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Member account not found")
+    if not member.app_access_enabled:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Member App access is disabled")
+    if not member.gym_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Member has no valid gym association")
+    return member

@@ -4,6 +4,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from app.models.user import User
 from app.models.member import Member
+from app.models.subscription import Subscription
 from app.repositories.member_repository import MemberRepository
 from app.core.security import hash_password, verify_password, create_access_token
 import secrets
@@ -31,6 +32,76 @@ class MemberService:
             raise HTTPException(409, "Username already exists. Please choose another username.")
         db.refresh(obj)
         return obj
+    @staticmethod
+    def get_member_app_profile(db, member):
+        """Return the member's own profile plus subscription/payment information."""
+        from datetime import date
+
+        subscriptions = (
+            db.query(Subscription)
+            .filter(Subscription.member_id == member.id)
+            .order_by(Subscription.start_date.desc(), Subscription.end_date.desc())
+            .all()
+        )
+
+        def subscription_payload(sub):
+            due_date = sub.payment_due_date
+            days_until_due = (due_date - date.today()).days if due_date else None
+            return {
+                "id": sub.id,
+                "plan_name": sub.plan_name,
+                "start_date": sub.start_date,
+                "end_date": sub.end_date,
+                "status": sub.status,
+                "amount": float(sub.amount or 0),
+                "paid_amount": sub.paid_amount,
+                "remaining_amount": sub.remaining_amount,
+                "payment_status": sub.payment_status,
+                "payment_due_date": due_date,
+                "days_until_payment_due": days_until_due,
+                "check_in_allowed": sub.check_in_allowed,
+            }
+
+        subscription_data = [subscription_payload(s) for s in subscriptions]
+        current = next(
+            (s for s in subscriptions if s.status == "active" and s.start_date <= date.today() <= s.end_date),
+            subscriptions[0] if subscriptions else None,
+        )
+
+        payments = []
+        for sub in subscriptions:
+            for payment in sorted(sub.payments or [], key=lambda p: p.payment_date, reverse=True):
+                payments.append({
+                    "id": payment.id,
+                    "subscription_id": payment.subscription_id,
+                    "amount": float(payment.amount or 0),
+                    "payment_method": payment.payment_method,
+                    "status": payment.status,
+                    "payment_date": payment.payment_date,
+                })
+        payments.sort(key=lambda p: p["payment_date"], reverse=True)
+
+        return {
+            "id": member.id,
+            "username": member.username,
+            "name": f"{member.first_name} {member.last_name}".strip(),
+            "first_name": member.first_name,
+            "last_name": member.last_name,
+            "email": member.email,
+            "phone": member.phone,
+            "date_of_birth": member.date_of_birth,
+            "gender": member.gender,
+            "height": float(member.height) if member.height is not None else None,
+            "weight": float(member.weight) if member.weight is not None else None,
+            "status": member.status,
+            "app_access_enabled": member.app_access_enabled,
+            "joined_at": member.joined_at,
+            "last_visit_at": member.last_visit_at,
+            "subscription": subscription_payload(current) if current else None,
+            "subscriptions": subscription_data,
+            "payments": payments,
+        }
+
     @staticmethod
     def get_all(db,gym_id): return MemberRepository.get_all(db,gym_id)
     @staticmethod

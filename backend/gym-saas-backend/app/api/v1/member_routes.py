@@ -7,8 +7,9 @@ from app.core.config import settings
 from fastapi import APIRouter,Depends,HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.core.dependencies import require_role,get_current_gym_id
+from app.core.dependencies import require_role,get_current_gym_id,get_current_member
 from app.schemas.member_schema import MemberCreate,MemberUpdate,MemberResponse
+from app.schemas.member_app_schema import MemberAppProfileResponse, MemberAppQrResponse
 from app.services.member_service import MemberService
 router=APIRouter(prefix="/api/v1/members",tags=["Members"])
 
@@ -31,6 +32,29 @@ def create(data:MemberCreate,db:Session=Depends(get_db),gym_id=Depends(get_curre
 @router.post("/app-login")
 def member_app_login(data:MemberLoginInput,db:Session=Depends(get_db)):
     return MemberService.authenticate_member(db,data.username,data.password)
+
+@router.get("/me", response_model=MemberAppProfileResponse)
+def member_app_me(member=Depends(get_current_member), db:Session=Depends(get_db)):
+    """Return only the authenticated member's profile, subscriptions, balances and payments."""
+    return MemberService.get_member_app_profile(db, member)
+
+@router.get("/me/entry-qr", response_model=MemberAppQrResponse)
+def member_app_entry_qr(member=Depends(get_current_member)):
+    """Issue the same signed attendance QR credential used by the existing scanner.
+
+    The token is intentionally short-lived (60 seconds); the Flutter app should
+    refresh it once per minute rather than continuously.
+    """
+    now=datetime.now(timezone.utc)
+    expires_at=now+timedelta(seconds=60)
+    token=jwt.encode({
+        "typ":"gymflow_entry_qr",
+        "sub":str(member.id),
+        "gym_id":str(member.gym_id),
+        "iat":now,
+        "exp":expires_at,
+    },settings.JWT_SECRET_KEY,algorithm=settings.JWT_ALGORITHM)
+    return {"qr_token":token,"expires_in":60}
 
 @router.post("/{member_id}/set-username", response_model=MemberResponse)
 def set_username(member_id:UUID,data:MemberUsernameInput,db:Session=Depends(get_db),gym_id=Depends(get_current_gym_id),_=Depends(require_role(["gym_admin","staff"]))):
