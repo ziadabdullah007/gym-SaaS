@@ -10,7 +10,7 @@ class GuestInput(BaseModel):
 
 class AttendanceCheckIn(BaseModel):
     member_id: UUID | None = None
-    qr_token: str | None = Field(default=None, min_length=20, max_length=200)
+    qr_token: str | None = Field(default=None, min_length=20, max_length=1024)
 
     @model_validator(mode="after")
     def require_one_identifier(self):
