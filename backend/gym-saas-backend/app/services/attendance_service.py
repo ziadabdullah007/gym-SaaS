@@ -1,4 +1,6 @@
 from datetime import datetime, timezone, timedelta
+from time import perf_counter
+import logging
 import hashlib
 import jwt
 from jwt import InvalidTokenError
@@ -9,6 +11,8 @@ from app.models.member import Member
 from app.models.subscription import Subscription
 from app.models.guest_invitation import GuestInvitation
 from app.repositories.attendance_repository import AttendanceRepository
+
+logger = logging.getLogger("gym_aura.attendance")
 
 class AttendanceService:
     @staticmethod
@@ -27,42 +31,88 @@ class AttendanceService:
 
     @staticmethod
     def check_in(db, gym_id, member_id=None, qr_token=None):
-        if qr_token:
-            # New rotating QR credentials are signed and expire after 60 seconds.
-            # Keep legacy hashed-token validation during migration for existing members.
-            member = None
-            try:
-                claims = jwt.decode(qr_token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-                if claims.get("typ") != "gymflow_entry_qr" or claims.get("gym_id") != str(gym_id):
-                    raise HTTPException(401, "Invalid QR code")
-                member = db.query(Member).filter(Member.id == claims.get("sub"), Member.gym_id == gym_id).first()
-            except InvalidTokenError:
-                token_hash = hashlib.sha256(qr_token.encode("utf-8")).hexdigest()
-                member = db.query(Member).filter(Member.gym_id == gym_id, Member.entry_qr_token_hash == token_hash).first()
-            if not member:
-                raise HTTPException(404, "Invalid QR code or member not found")
-            source = "qr"
-        else:
-            member = db.query(Member).filter(Member.id == member_id, Member.gym_id == gym_id).first()
-            if not member:
-                raise HTTPException(404, "Member not found")
-            source = "manual"
-        now = datetime.now(timezone.utc)
-        duplicate = db.query(Attendance).filter(Attendance.member_id == member.id, Attendance.check_in_time >= now - timedelta(seconds=90)).first()
-        if duplicate:
-            raise HTTPException(409, "A check-in was already recorded moments ago")
-        subscription = AttendanceService._get_eligible_subscription(db, member, now)
-        obj = Attendance(member_id=member.id, subscription_id=subscription.id, source=source,
-                         check_in_time=now, check_out_time=None, created_at=now)
+        """Check a member in and emit server-side timing diagnostics.
+
+        The diagnostics deliberately log timings only; QR tokens and other secrets
+        are never logged. This makes it possible to distinguish JWT/QR work from
+        Supabase/DB latency when a scan appears to take many seconds.
+        """
+        t0 = perf_counter()
+        timings = {}
+        source = "qr" if qr_token else "manual"
+        member = None
         try:
+            # QR verification / member lookup
+            step = perf_counter()
+            if qr_token:
+                try:
+                    claims = jwt.decode(qr_token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+                    if claims.get("typ") != "gymflow_entry_qr" or claims.get("gym_id") != str(gym_id):
+                        raise HTTPException(401, "Invalid QR code")
+                    member = db.query(Member).filter(
+                        Member.id == claims.get("sub"), Member.gym_id == gym_id
+                    ).first()
+                except InvalidTokenError:
+                    token_hash = hashlib.sha256(qr_token.encode("utf-8")).hexdigest()
+                    member = db.query(Member).filter(
+                        Member.gym_id == gym_id, Member.entry_qr_token_hash == token_hash
+                    ).first()
+            else:
+                member = db.query(Member).filter(
+                    Member.id == member_id, Member.gym_id == gym_id
+                ).first()
+            timings["qr_or_member_lookup_ms"] = round((perf_counter() - step) * 1000, 2)
+
+            if not member:
+                raise HTTPException(404, "Invalid QR code or member not found" if qr_token else "Member not found")
+
+            # Duplicate attendance lookup
+            now = datetime.now(timezone.utc)
+            step = perf_counter()
+            duplicate = db.query(Attendance).filter(
+                Attendance.member_id == member.id,
+                Attendance.check_in_time >= now - timedelta(seconds=90)
+            ).first()
+            timings["duplicate_check_ms"] = round((perf_counter() - step) * 1000, 2)
+            if duplicate:
+                raise HTTPException(409, "A check-in was already recorded moments ago")
+
+            # Subscription / payment eligibility lookup
+            step = perf_counter()
+            subscription = AttendanceService._get_eligible_subscription(db, member, now)
+            timings["subscription_check_ms"] = round((perf_counter() - step) * 1000, 2)
+
+            # Insert + commit
+            obj = Attendance(
+                member_id=member.id,
+                subscription_id=subscription.id,
+                source=source,
+                check_in_time=now,
+                check_out_time=None,
+                created_at=now,
+            )
+            step = perf_counter()
             db.add(obj)
             member.last_visit_at = now
             db.commit()
+            timings["insert_commit_ms"] = round((perf_counter() - step) * 1000, 2)
+
+            step = perf_counter()
             db.refresh(obj)
+            timings["refresh_ms"] = round((perf_counter() - step) * 1000, 2)
             return obj
+        except HTTPException:
+            raise
         except Exception:
             db.rollback()
             raise
+        finally:
+            timings["total_ms"] = round((perf_counter() - t0) * 1000, 2)
+            member_ref = str(member.id) if member else "unknown"
+            logger.info(
+                "ATTENDANCE_CHECKIN_TIMING source=%s gym_id=%s member_id=%s timings=%s",
+                source, gym_id, member_ref, timings
+            )
 
     @staticmethod
     def register_guests(db, gym_id, attendance_id, guests):
