@@ -1,5 +1,6 @@
 from uuid import UUID
 
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -22,8 +23,12 @@ def get_current_user(
     try:
         payload = decode_access_token(credentials.credentials)
         user_id = UUID(payload["sub"])
-    except (ValueError, KeyError, TypeError):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+    except (jwt.PyJWTError, ValueError, KeyError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     user = UserRepository.get_by_id(db, user_id)
     if not user or user.status != "active":
@@ -70,8 +75,12 @@ def get_current_member(
         payload = decode_access_token(credentials.credentials)
         user_id = UUID(payload["sub"])
         role = payload.get("role")
-    except (ValueError, KeyError, TypeError):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired member token")
+    except (jwt.PyJWTError, ValueError, KeyError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired member token. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     if role != "member":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Member access required")
